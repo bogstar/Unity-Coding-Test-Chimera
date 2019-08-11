@@ -22,6 +22,9 @@ public class GameManager : Manager<GameManager>
 
     [Header("References")]
     [SerializeField] private GameOverPanel gameOverPanel;
+    [SerializeField] private GameObject instructionsPanel;
+    [SerializeField] private PhasePanel phasePanel;
+    [SerializeField] private TurnPanel turnPanel;
     #endregion
 
     #region Public properties
@@ -50,6 +53,10 @@ public class GameManager : Manager<GameManager>
     #region Unity methods
     private void Start()
     {
+        instructionsPanel.SetActive(true);
+        turnPanel.Display(true);
+        phasePanel.Display(false);
+
         // Inject dependencies.
         WorldManager.GetManager().Initialize();
         AudioManager.GetManager().Initialize();
@@ -57,26 +64,25 @@ public class GameManager : Manager<GameManager>
         AI = AI.GetManager();
         AI.Initialize();
 
-        // Generate world.
-        WorldManager.GetManager().GenerateWorld();
-
-        // Spawn units.
-        SpawnStartingUnits();
-
-        // Hide Game Over Panel
-        // TODO: move to more appropriate place.
-        gameOverPanel.gameObject.SetActive(false);
-
-        // Set start phase.
-        ChangePhase(Phase.NextTurn);
+        ChangePhase(Phase.Animation);
     }
 
     private void Update()
     {
+        phasePanel.Display(false);
+
         switch (Phase)
         {
             case Phase.NextTurn:
                 NextUnitTurn();
+                break;
+            case Phase.Action:
+                phasePanel.Display(true);
+                phasePanel.SetContent("ACTION");
+                break;
+            case Phase.Select:
+                phasePanel.Display(true);
+                phasePanel.SetContent("SELECTION");
                 break;
         }
     }
@@ -111,18 +117,47 @@ public class GameManager : Manager<GameManager>
         switch (UnitOnTurn.Allegiance)
         {
             case Allegiance.Enemy:
+                turnPanel.SetContent("ENEMY");
                 AI.Decide(UnitOnTurn);
                 break;
 
             case Allegiance.Player:
                 AudioManager.GetManager().PlayCombatSound(playerTurnSignal);
+                turnPanel.SetContent("PLAYER");
                 ChangePhase(Phase.Action);
                 break;
         }
     }
     #endregion
 
+    #region Button events
+    public void Button_InstructionsClose()
+    {
+        StartGame();
+        instructionsPanel.SetActive(false);
+    }
+    #endregion
+
     #region Private methods
+    /// <summary>
+    /// Start Match.
+    /// </summary>
+    private void StartGame()
+    {
+        // Generate world.
+        WorldManager.GetManager().GenerateWorld();
+
+        // Spawn units.
+        SpawnStartingUnits();
+
+        // Hide Game Over Panel
+        // TODO: move to more appropriate place.
+        gameOverPanel.gameObject.SetActive(false);
+
+        // Set start phase.
+        ChangePhase(Phase.NextTurn);
+    }
+
     /// <summary>
     /// Spawn starting units and assign them to the world.
     /// </summary>

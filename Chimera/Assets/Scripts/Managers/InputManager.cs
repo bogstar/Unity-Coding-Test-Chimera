@@ -6,43 +6,32 @@ using UnityEngine.SceneManagement;
 
 public class InputManager : Manager<InputManager>
 {
+    #region Editor properties
     [Header("References")]
-    [SerializeField]
-    private CameraRig cameraRig;
-    [SerializeField]
-    private Vector2 cameraMinMaxX;
-    [SerializeField]
-    private Vector2 cameraMinMaxY;
-    [SerializeField]
-    private UnitInfoPanel selectedInfoPanel;
-    [SerializeField]
-    private UnitInfoPanel targetInfoPanel;
+    [SerializeField] private CameraRig cameraRig;
+    [SerializeField] private Vector2 cameraMinMaxX;
+    [SerializeField] private Vector2 cameraMinMaxY;
+    [SerializeField] private UnitInfoPanel selectedInfoPanel;
+    [SerializeField] private UnitInfoPanel targetInfoPanel;
+    #endregion
 
-    private Mode mode;
-
+    #region Private fields
     private Vector3 mousePos;
     private Vector3 lastMousePos;
     private bool ignoreCameraPan;
-
     private Tile hoveredTile;
     private Tile selectedTile;
+    #endregion
 
-    private EventSystem EventSystem;
+    #region Private properties
+    private EventSystem EventSystem { get; set; }
+    private GameManager GameManager { get; set; }
+    private WorldManager WorldManager { get; set; }
+    private World World { get; set; }
+    private CameraMode CameraMode { get; set; }
+    #endregion
 
-    private GameManager GameManager;
-    private WorldManager WorldManager;
-    private World World;
-
-
-    public void Initialize()
-    {
-        EventSystem = EventSystem.current;
-        GameManager = GameManager.GetManager();
-        WorldManager = WorldManager.GetManager();
-        World = WorldManager.World;
-        mode = Mode.Free;
-    }
-
+    #region Unity methods
     private void OnApplicationFocus(bool focus)
     {
         // Prevent sudden spaz if we middle click to focus
@@ -54,11 +43,7 @@ public class InputManager : Manager<InputManager>
 
     private void Update()
     {
-        if (IsOverUIX() && mode == Mode.Free)
-        {
-            // nothing
-        }
-        else
+        if (!IsOverUIX() || CameraMode != CameraMode.Free)
         {
             HandleCameraMovement();
         }
@@ -74,7 +59,7 @@ public class InputManager : Manager<InputManager>
                 {
                     // We select a tile.
                     // If the hovered tile exists.
-                    // If the hovered tile contains a unit.
+                    // If the hovered tile contains our unit.
                     if (hoveredTile != null && hoveredTile.Unit != null && hoveredTile.Unit == GameManager.UnitOnTurn)
                     {
                         Unit unit = GameManager.UnitOnTurn;
@@ -157,7 +142,12 @@ public class InputManager : Manager<InputManager>
                             // If we are in attack range.
                             if (selectedUnit.AttackTilesInRange.Contains(targetUnit.Tile))
                             {
-                                WorldManager.AttackUnit(selectedUnit, targetUnit, () => { GameManager.ChangePhase(Phase.NextTurn); });
+                                // Attack unit.
+                                WorldManager.AttackUnit(selectedUnit, targetUnit, () =>
+                                {
+                                    // End turn.
+                                    GameManager.ChangePhase(Phase.NextTurn);
+                                });
                             }
                             // Otherwise, if we are in movement range.
                             else if (selectedUnit.MovementTilesInRange.Contains(targetUnit.Tile))
@@ -165,7 +155,16 @@ public class InputManager : Manager<InputManager>
                                 var nearestTile = Pathfinding.GetInAttackRange(selectedUnit.Tile, selectedUnit.MovementTilesInRange, targetUnit.Tile, selectedUnit.AttackRange);
                                 var path = Pathfinding.FindPath(selectedUnit.Tile, nearestTile, out int cost2);
 
-                                WorldManager.MoveUnit(selectedUnit, path, () => { WorldManager.AttackUnit(selectedUnit, targetUnit, () => { GameManager.ChangePhase(Phase.NextTurn); }); });
+                                // Move unit.
+                                WorldManager.MoveUnit(selectedUnit, path, () =>
+                                {
+                                    // After that, attack enemy.
+                                    WorldManager.AttackUnit(selectedUnit, targetUnit, () => 
+                                    {
+                                        // End turn.
+                                        GameManager.ChangePhase(Phase.NextTurn);
+                                    });
+                                });
                             }
                         }
                         // We want to move a unit.
@@ -180,7 +179,12 @@ public class InputManager : Manager<InputManager>
                                 modifiedPathfinding.costToThisTile = cost;
                                 path[path.Length - 1].Pathfinding = modifiedPathfinding;
 
-                                WorldManager.MoveUnit(selectedUnit, path, () => { GameManager.ChangePhase(Phase.Action); });
+                                // Move unit.
+                                WorldManager.MoveUnit(selectedUnit, path, () =>
+                                {
+                                    // Return control to player.
+                                    GameManager.ChangePhase(Phase.Action);
+                                });
                             }
                         }
                     }
@@ -193,6 +197,7 @@ public class InputManager : Manager<InputManager>
                     GameManager.ChangePhase(Phase.Select);
                 }
 
+                // Display potential traversable tiles.
                 foreach (var t in selectedUnit.MovementTilesInRange)
                 {
                     if (t.Empty)
@@ -234,12 +239,16 @@ public class InputManager : Manager<InputManager>
                         targetUnit.Tile.Highlight(Color.red);
                     }
                 }
+                // Otherwise target a tile.
                 else if (hoveredTile != null && hoveredTile.Unit == null)
                 {
+                    // Calculate path to tile.
                     var path = Pathfinding.FindPath(selectedUnit.Tile, hoveredTile, out int cost, selectedUnit.MovementRemaining);
 
                     if (path.Length > 0)
                     {
+                        // If path exists.
+                        // If player holds shift, display attack range after move.
                         if (Input.GetKey(KeyCode.LeftShift))
                         {
                             var attackRangeAfter = Pathfinding.GetRange(path[path.Length - 1], selectedUnit.AttackRange);
@@ -249,6 +258,7 @@ public class InputManager : Manager<InputManager>
                             }
                         }
 
+                        // Highlight path to target tile.
                         var modifiedPathfinding = path[path.Length - 1].Pathfinding;
                         modifiedPathfinding.costToThisTile = cost;
                         path[path.Length - 1].Pathfinding = modifiedPathfinding;
@@ -271,60 +281,33 @@ public class InputManager : Manager<InputManager>
                 break;
         }
     }
+    #endregion
 
-    private void HandleCameraMovement()
+    #region Public methods
+    /// <summary>
+    /// Initialize manager.
+    /// </summary>
+    public void Initialize()
     {
-        mousePos = cameraRig.PointFromRaycast();
-
-        if (!ignoreCameraPan)
-        {
-            if (Input.GetMouseButtonDown(2))
-            {
-                mode = Mode.Pan;
-            }
-            else if (Input.GetMouseButton(2))
-            {
-                // If delta exists, move camera
-                if (mousePos != lastMousePos && mode == Mode.Pan)
-                {
-                    Vector3 mouseMoveDelta = lastMousePos - mousePos;
-                    Vector3 cameraPos = cameraRig.transform.position;
-
-                    cameraPos += mouseMoveDelta;
-
-                    // Clamp camera pos
-                    float xPos = Mathf.Clamp(cameraPos.x, cameraMinMaxX.x, cameraMinMaxX.y);
-                    float yPos = Mathf.Clamp(cameraPos.y, cameraMinMaxY.x, cameraMinMaxY.y);
-
-                    cameraPos = new Vector3(xPos, yPos, -10f);
-
-                    cameraRig.transform.position = cameraPos;
-                }
-            }
-            else if (Input.GetMouseButtonUp(2))
-            {
-                mode = Mode.Free;
-            }
-        }
-        else
-        {
-            ignoreCameraPan = false;
-        }
-
-        lastMousePos = cameraRig.PointFromRaycast();
+        EventSystem = EventSystem.current;
+        GameManager = GameManager.GetManager();
+        WorldManager = WorldManager.GetManager();
+        World = WorldManager.World;
+        CameraMode = CameraMode.Free;
     }
 
-    private bool IsOverUIX()
-    {
-        return EventSystem.IsPointerOverGameObject();
-    }
-
+    /// <summary>
+    /// Register hover callbacks.
+    /// </summary>
+    /// <param name="tile">Tile.</param>
     public void RegisterTile(Tile tile)
     {
         tile.RegisterOnHoverOnCallback(TileOnHoverOn);
         tile.RegisterOnHoverOffCallback(TileOnHoverOff);
     }
+    #endregion
 
+    #region Button events
     public void Button_EndTurn()
     {
         if (GameManager.Phase == Phase.Action || GameManager.Phase == Phase.Select)
@@ -337,7 +320,67 @@ public class InputManager : Manager<InputManager>
     {
         SceneManager.LoadScene(0);
     }
+    #endregion
 
+    #region Private methods
+    /// <summary>
+    /// Handle Camera Movement.
+    /// </summary>
+    private void HandleCameraMovement()
+    {
+        mousePos = cameraRig.PointFromRaycast();
+
+        if (!ignoreCameraPan)
+        {
+            if (Input.GetMouseButtonDown(2))
+            {
+                CameraMode = CameraMode.Pan;
+            }
+            else if (Input.GetMouseButton(2))
+            {
+                // If delta exists, move camera.
+                if (mousePos != lastMousePos && CameraMode == CameraMode.Pan)
+                {
+                    Vector3 mouseMoveDelta = lastMousePos - mousePos;
+                    Vector3 cameraPos = cameraRig.transform.position;
+
+                    cameraPos += mouseMoveDelta;
+
+                    // Clamp camera pos.
+                    float xPos = Mathf.Clamp(cameraPos.x, cameraMinMaxX.x, cameraMinMaxX.y);
+                    float yPos = Mathf.Clamp(cameraPos.y, cameraMinMaxY.x, cameraMinMaxY.y);
+
+                    cameraPos = new Vector3(xPos, yPos, -10f);
+
+                    cameraRig.transform.position = cameraPos;
+                }
+            }
+            else if (Input.GetMouseButtonUp(2))
+            {
+                CameraMode = CameraMode.Free;
+            }
+        }
+        else
+        {
+            ignoreCameraPan = false;
+        }
+
+        lastMousePos = cameraRig.PointFromRaycast();
+    }
+
+    /// <summary>
+    /// Is pointer over any UI element.
+    /// </summary>
+    /// <returns></returns>
+    private bool IsOverUIX()
+    {
+        return EventSystem.IsPointerOverGameObject();
+    }
+
+    /// <summary>
+    /// On Tile hover on Callback.
+    /// </summary>
+    /// <param name="tile"></param>
     private void TileOnHoverOn(Tile tile)
     {
         switch (GameManager.Phase)
@@ -352,9 +395,17 @@ public class InputManager : Manager<InputManager>
                     hoveredTile = tile;
                 }
                 break;
+
+            case Phase.Animation:
+                hoveredTile = tile;
+                break;
         }
     }
 
+    /// <summary>
+    /// On Tile hover off Callback.
+    /// </summary>
+    /// <param name="tile"></param>
     private void TileOnHoverOff(Tile tile)
     {
         switch (GameManager.Phase)
@@ -365,17 +416,24 @@ public class InputManager : Manager<InputManager>
         }
     }
 
+    /// <summary>
+    /// Unhighlight all tiles.
+    /// </summary>
     private void UnhighlightAllTiles()
     {
-        foreach (var tile in WorldManager.GetManager().World.Tiles)
+        if (WorldManager.World == null || WorldManager.World.Tiles == null)
+            return;
+
+        foreach (var tile in WorldManager.World.Tiles)
         {
             tile.Unhiglight();
         }
     }
+    #endregion
+}
 
-    public enum Mode
-    {
-        Free,
-        Pan
-    }
+public enum CameraMode
+{
+    Free,
+    Pan
 }
