@@ -2,120 +2,179 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// Main manager class used for handling main game loop.
+/// </summary>
 public class GameManager : Manager<GameManager>
 {
-    public AudioClip[] playerTurnSignal;
-    public AudioClip[] victorySounds;
-    public AudioClip[] defeatSounds;
+    #region Editor parameters
+    [Header("Starting Units")]
+    [SerializeField] private StartingUnitLocation[] startingPlayerUnits;
+    [SerializeField] private StartingUnitLocation[] startingAIUnits;
 
-    public GameObject projectilePrefab;
+    [Header("Audio")]
+    [SerializeField] private AudioClip[] playerTurnSignal;
+    [SerializeField] private AudioClip[] victorySounds;
+    [SerializeField] private AudioClip[] defeatSounds;
 
-    public StartingUnitLocation[] startingPlayerUnits;
-    public StartingUnitLocation[] startingAIUnits;
+    [Header("Prefabs")]
+    [SerializeField] private GameObject m_projectilePrefab;
 
-    public GameOverPanel gameOverPanel;
+    [Header("References")]
+    [SerializeField] private GameOverPanel gameOverPanel;
+    #endregion
 
-    public List<Unit> unitsOnBoard;
-    public Unit unitOnTurn;
+    #region Public properties
+    /// <summary>
+    /// Prefab of the projectile Game Object.
+    /// </summary>
+    public GameObject ProjectilePrefab { get { return m_projectilePrefab; } }
+    /// <summary>
+    /// List of all units on the board. It is a queue.
+    /// </summary>
+    public List<Unit> UnitsOnBoard { get; private set; }
+    /// <summary>
+    /// Unit that is currently on turn.
+    /// </summary>
+    public Unit UnitOnTurn { get; private set; }
+    /// <summary>
+    /// Current game phase.
+    /// </summary>
+    public Phase Phase { get; private set; }
+    #endregion
 
-    public Phase phase;
-
+    #region Private fields
     private AI AI;
+    #endregion
 
+    #region Unity methods
     private void Start()
     {
+        // Inject dependencies.
         WorldManager.GetManager().Initialize();
-        WorldManager.GetManager().GenerateWorld();
         AudioManager.GetManager().Initialize();
-        SpawnStartingUnits();
-
         InputManager.GetManager().Initialize();
-
-        gameOverPanel.gameObject.SetActive(false);
-
         AI = AI.GetManager();
         AI.Initialize();
-        StartCoroutine(ProcessGameTick());
+
+        // Generate world.
+        WorldManager.GetManager().GenerateWorld();
+
+        // Spawn units.
+        SpawnStartingUnits();
+
+        // Hide Game Over Panel
+        // TODO: move to more appropriate place.
+        gameOverPanel.gameObject.SetActive(false);
+
+        // Set start phase.
+        ChangePhase(Phase.NextTurn);
     }
 
+    private void Update()
+    {
+        switch (Phase)
+        {
+            case Phase.NextTurn:
+                NextUnitTurn();
+                break;
+        }
+    }
+    #endregion
+
+    #region Public methods
+    /// <summary>
+    /// Change phase.
+    /// </summary>
+    /// <param name="newPhase"></param>
     public void ChangePhase(Phase newPhase)
     {
-        phase = newPhase;
+        Phase = newPhase;
     }
 
-    private IEnumerator ProcessGameTick()
-    {
-        ChangePhase(Phase.None);
-
-        while (true)
-        {
-            switch (phase)
-            {
-                case Phase.None:
-                    NextUnitTurn();
-                    break;
-            }
-
-            yield return null;
-        }
-    }
-
+    /// <summary>
+    /// Process next turn.
+    /// </summary>
     public void NextUnitTurn()
     {
-        if (unitOnTurn != null)
-            unitOnTurn.EndTurn();
+        if (UnitOnTurn != null)
+            UnitOnTurn.EndTurn();
 
-        unitOnTurn = unitsOnBoard[0];
-        unitsOnBoard.RemoveAt(0);
-        unitsOnBoard.Add(unitOnTurn);
+        // Remove first unit in queue and add it to the end.
+        UnitOnTurn = UnitsOnBoard[0];
+        UnitsOnBoard.RemoveAt(0);
+        UnitsOnBoard.Add(UnitOnTurn);
 
-        unitOnTurn.StartTurn();
-        if (unitOnTurn.Allegiance == Allegiance.Enemy)
+        // Start its turn.
+        UnitOnTurn.StartTurn();
+
+        switch (UnitOnTurn.Allegiance)
         {
-            AI.Decide(unitOnTurn);
-        }
-        else
-        {
-            AudioManager.GetManager().PlayCombatSound(playerTurnSignal);
-            ChangePhase(Phase.Move);
+            case Allegiance.Enemy:
+                AI.Decide(UnitOnTurn);
+                break;
+
+            case Allegiance.Player:
+                AudioManager.GetManager().PlayCombatSound(playerTurnSignal);
+                ChangePhase(Phase.Action);
+                break;
         }
     }
+    #endregion
 
+    #region Private methods
+    /// <summary>
+    /// Spawn starting units and assign them to the world.
+    /// </summary>
     private void SpawnStartingUnits()
     {
         var world = WorldManager.GetManager().World;
 
+        UnitsOnBoard = new List<Unit>();
+
         foreach (var unitLocation in startingPlayerUnits)
         {
             var unit = world.SpawnUnitOnTile(unitLocation.unit, world.Tiles[unitLocation.position.x, unitLocation.position.y], Allegiance.Player);
-            unitsOnBoard.Add(unit);
+            UnitsOnBoard.Add(unit);
             unit.RegisterDeathCallback(OnUnitDeath);
         }
 
         foreach (var unitLocation in startingAIUnits)
         {
             var unit = world.SpawnUnitOnTile(unitLocation.unit, world.Tiles[unitLocation.position.x, unitLocation.position.y], Allegiance.Enemy);
-            unitsOnBoard.Add(unit);
+            UnitsOnBoard.Add(unit);
             unit.RegisterDeathCallback(OnUnitDeath);
         }
 
-        Utilities.ShuffleList(unitsOnBoard);
+        // Shuffle turn order.
+        Utilities.ShuffleList(UnitsOnBoard);
     }
 
+    /// <summary>
+    /// On Unit death callback.
+    /// </summary>
+    /// <param name="unit">Dead unit.</param>
     private void OnUnitDeath(Unit unit)
     {
-        unitsOnBoard.Remove(unit);
+        // Remove unit from turn queue.
+        UnitsOnBoard.Remove(unit);
+        // Remove unit visually.
         unit.UnregisterDeathCallback(OnUnitDeath);
         unit.Tile.KillUnit();
+
+        // Check for win/lose condition.
         CheckWinLoseCondition();
     }
 
+    /// <summary>
+    /// Check win lose condition.
+    /// </summary>
     private void CheckWinLoseCondition()
     {
         bool win = true;
         bool lose = true;
 
-        foreach (var unit in unitsOnBoard)
+        foreach (var unit in UnitsOnBoard)
         {
             if (unit.Allegiance == Allegiance.Enemy)
             {
@@ -127,6 +186,7 @@ public class GameManager : Manager<GameManager>
             }
         }
 
+        // Display game over screen if condition met.
         if (win)
         {
             AudioManager.GetManager().PlaySfxSound(victorySounds);
@@ -140,6 +200,7 @@ public class GameManager : Manager<GameManager>
             ChangePhase(Phase.EndMatch);
         }
     }
+    #endregion
 
     [System.Serializable]
     public struct StartingUnitLocation

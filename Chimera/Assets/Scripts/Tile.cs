@@ -2,8 +2,12 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// MonoBehaviour that holds tile data and displays tile.
+/// </summary>
 public class Tile : MonoBehaviour
 {
+    #region Public properties
     /// <summary>
     /// World the tile belongs to.
     /// </summary>
@@ -40,16 +44,9 @@ public class Tile : MonoBehaviour
             return Unit == null;
         }
     }
+    #endregion
 
-    /// <summary>
-    /// Callback for hover on.
-    /// </summary>
-    private System.Action<Tile> OnHoverOnCallback;
-    /// <summary>
-    /// Callback for hover off.
-    /// </summary>
-    private System.Action<Tile> OnHoverOffCallback;
-
+    #region Public methods
     /// <summary>
     /// Initialize tile.
     /// </summary>
@@ -57,17 +54,23 @@ public class Tile : MonoBehaviour
     /// <param name="renderer">SpriteRenderer of the tile.</param>
     public void Initialize(World world, SpriteRenderer renderer)
     {
-        this.World = world;
-        this.Renderer = renderer;
-        this.MovementPenalty = 1f;
-        this.Unit = null;
-        this.Pathfinding = new PathfindingData();
+        World = world;
+        Renderer = renderer;
+        MovementPenalty = 1f;
+        Unit = null;
+        Pathfinding = new PathfindingData();
     }
 
+    /// <summary>
+    /// Spawns unit prefab on the tile. Returns the spawned unit.
+    /// </summary>
+    /// <param name="unitPrefab"></param>
+    /// <param name="allegiance"></param>
+    /// <returns></returns>
     public Unit SpawnUnit(Unit unitPrefab, Allegiance allegiance)
     {
         var unitGO = GameObject.Instantiate(unitPrefab);
-        unitGO.transform.SetParent(this.transform);
+        unitGO.transform.SetParent(transform);
         unitGO.transform.localPosition = Vector3.zero;
 
         Unit unit = unitGO.GetComponent<Unit>();
@@ -79,6 +82,11 @@ public class Tile : MonoBehaviour
         return unit;
     }
 
+    /// <summary>
+    /// Assigns a unit to this tile. (Not visually)
+    /// </summary>
+    /// <param name="unit"></param>
+    /// <returns></returns>
     public bool SetUnit(Unit unit)
     {
         if (!Empty)
@@ -90,49 +98,89 @@ public class Tile : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// Visually destroys unit from tile.
+    /// </summary>
     public void KillUnit()
     {
         Destroy(Unit.gameObject);
         RemoveUnit();
     }
 
+    /// <summary>
+    /// Removes a unit from tile. (Not visually)
+    /// </summary>
     public void RemoveUnit()
     {
         Unit = null;
     }
 
+    /// <summary>
+    /// Highlight a tile to a specific color.
+    /// </summary>
+    /// <param name="color"></param>
     public void Highlight(Color color)
     {
         Renderer.color = color;
     }
 
+    /// <summary>
+    /// Colors the tile back to white.
+    /// </summary>
     public void Unhiglight()
     {
         Renderer.color = Color.white;
     }
+    #endregion
 
     #region Callbacks
+    /// <summary>
+    /// Callback for hover on.
+    /// </summary>
+    private System.Action<Tile> OnHoverOnCallback;
+    /// <summary>
+    /// Callback for hover off.
+    /// </summary>
+    private System.Action<Tile> OnHoverOffCallback;
+
+    /// <summary>
+    /// Registers OnHoverOnCallback.
+    /// </summary>
+    /// <param name="cb"></param>
     public void RegisterOnHoverOnCallback(System.Action<Tile> cb)
     {
         OnHoverOnCallback += cb;
     }
 
+    /// <summary>
+    /// Registers OnHoverOffCallback.
+    /// </summary>
+    /// <param name="cb"></param>
     public void RegisterOnHoverOffCallback(System.Action<Tile> cb)
     {
         OnHoverOffCallback += cb;
     }
 
+    /// <summary>
+    /// Unregisters OnHoverOnCallback callback.
+    /// </summary>
+    /// <param name="cb"></param>
     public void UnregisterOnHoverOnCallback(System.Action<Tile> cb)
     {
         OnHoverOnCallback -= cb;
     }
 
+    /// <summary>
+    /// Unregisters OnHoverOffCallback callback.
+    /// </summary>
+    /// <param name="cb"></param>
     public void UnregisterOnHoverOffCallback(System.Action<Tile> cb)
     {
         OnHoverOffCallback -= cb;
     }
     #endregion
 
+    #region Unity methods
     private void OnMouseEnter()
     {
         OnHoverOnCallback?.Invoke(this);
@@ -142,7 +190,11 @@ public class Tile : MonoBehaviour
     {
         OnHoverOffCallback?.Invoke(this);
     }
+    #endregion
 
+    /// <summary>
+    /// Detailed info about pathfinding.
+    /// </summary>
     public struct PathfindingData
     {
         public Tile parent;

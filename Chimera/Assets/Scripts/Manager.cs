@@ -2,7 +2,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Manager<T> : MonoBehaviour where T : MonoBehaviour
+/// <summary>
+/// Generic manager class that other managers inherit from.
+/// </summary>
+/// <typeparam name="T"></typeparam>
+public abstract class Manager<T> : MonoBehaviour where T : MonoBehaviour
 {
     public static T GetManager()
     {

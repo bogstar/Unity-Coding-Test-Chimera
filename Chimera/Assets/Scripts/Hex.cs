@@ -6,6 +6,7 @@ using System.Collections;
 /// </summary>
 public class Hex
 {
+    #region Public properties
     /// <summary>
     /// Size of the base of the hex.
     /// </summary>
@@ -21,7 +22,9 @@ public class Hex
     /// Vertical spacing between hexes.
     /// </summary>
     public float vert { get; private set; }
+    #endregion
 
+    #region Contstructor
     public Hex (float a, Oddity oddity)
     {
         this.a = a;
@@ -32,7 +35,9 @@ public class Hex
         width = Mathf.Sqrt(3f) * a;
         horiz = height;
     }
+    #endregion
 
+    #region Public methods
     /// <summary>
     /// Return offset coordinates of the neigboring tile in the specified direction.
     /// </summary>
@@ -187,6 +192,7 @@ public class Hex
 
         return 0;
     }
+    #endregion
 
     /// <summary>
     /// Oddity describes whether grid starts at odd or even hexes. 

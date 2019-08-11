@@ -4,13 +4,22 @@ using UnityEngine;
 
 public class CameraRig : MonoBehaviour
 {
+    #region Private fields
     private Camera Camera;
+    #endregion
 
+    #region Unity methods
     private void Start()
     {
         Camera = GetComponent<Camera>();
     }
+    #endregion
 
+    #region Public methods
+    /// <summary>
+    /// Retrieve a 2D point in the world using current mouse position.
+    /// </summary>
+    /// <returns></returns>
     public Vector2 PointFromRaycast()
     {
         Ray ray = Camera.ScreenPointToRay(Input.mousePosition);
@@ -19,4 +28,5 @@ public class CameraRig : MonoBehaviour
 
         return new Vector2(pos.x, pos.z);
     }
+    #endregion
 }

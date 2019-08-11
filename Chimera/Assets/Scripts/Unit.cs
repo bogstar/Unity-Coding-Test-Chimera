@@ -160,7 +160,7 @@ public class Unit : MonoBehaviour
     {
         HashSet<Unit> allies = new HashSet<Unit>();
 
-        foreach (var u in GameManager.GetManager().unitsOnBoard)
+        foreach (var u in GameManager.GetManager().UnitsOnBoard)
         {
             if (u.Allegiance == Allegiance)
             {
@@ -179,7 +179,7 @@ public class Unit : MonoBehaviour
     {
         HashSet<Unit> foes = new HashSet<Unit>();
 
-        foreach (var u in GameManager.GetManager().unitsOnBoard)
+        foreach (var u in GameManager.GetManager().UnitsOnBoard)
         {
             if (u.Allegiance != Allegiance)
             {

@@ -65,7 +65,7 @@ public class InputManager : Manager<InputManager>
 
         UnhighlightAllTiles();
 
-        switch (GameManager.phase)
+        switch (GameManager.Phase)
         {
             case Phase.Select:
 
@@ -75,12 +75,12 @@ public class InputManager : Manager<InputManager>
                     // We select a tile.
                     // If the hovered tile exists.
                     // If the hovered tile contains a unit.
-                    if (hoveredTile != null && hoveredTile.Unit != null && hoveredTile.Unit == GameManager.unitOnTurn)
+                    if (hoveredTile != null && hoveredTile.Unit != null && hoveredTile.Unit == GameManager.UnitOnTurn)
                     {
-                        Unit unit = GameManager.unitOnTurn;
+                        Unit unit = GameManager.UnitOnTurn;
                         selectedTile = unit.Tile;
                         unit.CalculateRanges();
-                        GameManager.ChangePhase(Phase.Move);
+                        GameManager.ChangePhase(Phase.Action);
                     }
                     // The tile is invalid selecition.
                     else
@@ -132,13 +132,13 @@ public class InputManager : Manager<InputManager>
                     hoveredTile.Highlight(Color.cyan);
                 }
 
-                GameManager.unitOnTurn.Tile.Highlight(Color.green);
+                GameManager.UnitOnTurn.Tile.Highlight(Color.green);
 
                 break;
 
-            case Phase.Move:
+            case Phase.Action:
 
-                Unit selectedUnit = GameManager.unitOnTurn;
+                Unit selectedUnit = GameManager.UnitOnTurn;
 
                 selectedInfoPanel.Display(true);
                 selectedInfoPanel.SetInfo(selectedUnit.Tile);
@@ -157,7 +157,7 @@ public class InputManager : Manager<InputManager>
                             // If we are in attack range.
                             if (selectedUnit.AttackTilesInRange.Contains(targetUnit.Tile))
                             {
-                                WorldManager.AttackUnit(selectedUnit, targetUnit, () => { GameManager.ChangePhase(Phase.None); });
+                                WorldManager.AttackUnit(selectedUnit, targetUnit, () => { GameManager.ChangePhase(Phase.NextTurn); });
                             }
                             // Otherwise, if we are in movement range.
                             else if (selectedUnit.MovementTilesInRange.Contains(targetUnit.Tile))
@@ -165,7 +165,7 @@ public class InputManager : Manager<InputManager>
                                 var nearestTile = Pathfinding.GetInAttackRange(selectedUnit.Tile, selectedUnit.MovementTilesInRange, targetUnit.Tile, selectedUnit.AttackRange);
                                 var path = Pathfinding.FindPath(selectedUnit.Tile, nearestTile, out int cost2);
 
-                                WorldManager.MoveUnit(selectedUnit, path, () => { WorldManager.AttackUnit(selectedUnit, targetUnit, () => { GameManager.ChangePhase(Phase.None); }); });
+                                WorldManager.MoveUnit(selectedUnit, path, () => { WorldManager.AttackUnit(selectedUnit, targetUnit, () => { GameManager.ChangePhase(Phase.NextTurn); }); });
                             }
                         }
                         // We want to move a unit.
@@ -180,7 +180,7 @@ public class InputManager : Manager<InputManager>
                                 modifiedPathfinding.costToThisTile = cost;
                                 path[path.Length - 1].Pathfinding = modifiedPathfinding;
 
-                                WorldManager.MoveUnit(selectedUnit, path, () => { GameManager.ChangePhase(Phase.Move); });
+                                WorldManager.MoveUnit(selectedUnit, path, () => { GameManager.ChangePhase(Phase.Action); });
                             }
                         }
                     }
@@ -327,7 +327,7 @@ public class InputManager : Manager<InputManager>
 
     public void Button_EndTurn()
     {
-        if (GameManager.phase == Phase.Move || GameManager.phase == Phase.Select)
+        if (GameManager.Phase == Phase.Action || GameManager.Phase == Phase.Select)
         {
             GameManager.NextUnitTurn();
         }
@@ -340,14 +340,14 @@ public class InputManager : Manager<InputManager>
 
     private void TileOnHoverOn(Tile tile)
     {
-        switch (GameManager.phase)
+        switch (GameManager.Phase)
         {
             case Phase.Select:
                 hoveredTile = tile;
                 break;
 
-            case Phase.Move:
-                if (GameManager.unitOnTurn != null)
+            case Phase.Action:
+                if (GameManager.UnitOnTurn != null)
                 {
                     hoveredTile = tile;
                 }
@@ -357,7 +357,7 @@ public class InputManager : Manager<InputManager>
 
     private void TileOnHoverOff(Tile tile)
     {
-        switch (GameManager.phase)
+        switch (GameManager.Phase)
         {
             case Phase.Select:
                 hoveredTile = null;

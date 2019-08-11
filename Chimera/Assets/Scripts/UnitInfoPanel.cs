@@ -26,17 +26,28 @@ public class UnitInfoPanel : MonoBehaviour
     private float moveBarTotalWidth;
     #endregion
 
+    #region Unity methods
     private void Start()
     {
         healthBarTotalWidth = healthBar.sizeDelta.x;
         moveBarTotalWidth = moveBar.sizeDelta.x;
     }
+    #endregion
 
+    #region Public methods
+    /// <summary>
+    /// Display the panel.
+    /// </summary>
+    /// <param name="display"></param>
     public void Display(bool display)
     {
         gameObject.SetActive(display);
     }
 
+    /// <summary>
+    /// Sets the info about the tile.
+    /// </summary>
+    /// <param name="tile">Tile info.</param>
     public void SetInfo(Tile tile)
     {
         coordinatesLabel.text = tile.Position.x + ", " + tile.Position.y;
@@ -63,4 +74,5 @@ public class UnitInfoPanel : MonoBehaviour
             moveBar.sizeDelta = new Vector2(unit.MovementRemaining / (float)unit.MovementRange * moveBarTotalWidth, moveBar.sizeDelta.y);
         }
     }
+    #endregion
 }

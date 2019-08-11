@@ -10,10 +10,28 @@ public enum Allegiance
 
 public enum Phase
 {
-    None,
+    /// <summary>
+    /// Ended turn, waiting for Game Manager to process next turn.
+    /// </summary>
+    NextTurn,
+
+    /// <summary>
+    /// Player can freely select units and preview them on board.
+    /// </summary>
     Select,
-    Move,
-    Moving,
+
+    /// <summary>
+    /// Player takes action for a selected unit.
+    /// </summary>
     Action,
+
+    /// <summary>
+    /// Unit is performing an action.
+    /// </summary>
+    Animation,
+
+    /// <summary>
+    /// Game has ended.
+    /// </summary>
     EndMatch
 }

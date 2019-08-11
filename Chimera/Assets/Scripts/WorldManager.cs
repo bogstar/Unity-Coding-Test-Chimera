@@ -72,7 +72,7 @@ public class WorldManager : Manager<WorldManager>
     public void AttackUnit(Unit attacker, Unit defender, System.Action attFinishedCb)
     {
         // Ensure no new commands can be issued.
-        GameManager.ChangePhase(Phase.Moving);
+        GameManager.ChangePhase(Phase.Animation);
 
         StartCoroutine(AttackUnitCoroutine(attacker, defender, attFinishedCb));
     }
@@ -86,7 +86,7 @@ public class WorldManager : Manager<WorldManager>
     public void MoveUnit(Unit unit, Tile[] path, System.Action moveFinishedCb)
     {
         // Ensure no new commands can be issued.
-        GameManager.ChangePhase(Phase.Moving);
+        GameManager.ChangePhase(Phase.Animation);
 
         StartCoroutine(MoveUnitCoroutine(unit, path, moveFinishedCb));
     }
@@ -104,7 +104,7 @@ public class WorldManager : Manager<WorldManager>
     {
         // Start the attack sequence.
         // Spawn a projectile.
-        var projectileGO = Instantiate(GameManager.projectilePrefab);
+        var projectileGO = Instantiate(GameManager.ProjectilePrefab);
         projectileGO.transform.position = attacker.transform.position;
         Vector3 dir = (defender.transform.position - attacker.transform.position).normalized;
         projectileGO.transform.eulerAngles = new Vector3(0, 0, Vector3.SignedAngle(Vector3.up, dir, Vector3.forward));
